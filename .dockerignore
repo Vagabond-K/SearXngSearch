@@ -1,0 +1,14 @@
+# 빌드 산출물
+**/bin/
+**/obj/
+
+# IDE / VCS / OS
+.vs/
+.vscode/
+.git/
+.gitignore
+*.user
+.DS_Store
+
+# 로컬 시크릿 (이미지에 포함하지 않음)
+SearXngSearch.Mcp/appsettings.Development.json

@@ -1,0 +1,10 @@
+<Solution>
+  <Project Path="SearXngSearch\SearXngSearch.csproj" />
+  <Project Path="SearXngSearch.Mcp\SearXngSearch.Mcp.csproj" />
+  <Project Path="SearXngSearch.Ai\SearXngSearch.Ai.csproj" />
+  <Project Path="SearXngSearch.Tests\SearXngSearch.Tests.csproj" />
+  <Folder Name="/Samples/">
+    <Project Path="Samples\MicrosoftAgentFrameworkSample\MicrosoftAgentFrameworkSample.csproj" />
+    <Project Path="Samples\SimpleSearchSample\SimpleSearchSample.csproj" />
+  </Folder>
+</Solution>

@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  SearXngSearchMcpServer launchd LaunchAgent 템플릿
+  설치 위치: ~/Library/LaunchAgents/com.searxng.mcp.plist
+
+  이 파일은 install-service-macos.sh가 __PLACEHOLDER__를 치환해 생성합니다.
+  직접 수정하지 마세요 (재설치 시 덮어써집니다).
+
+  관리:
+    launchctl bootout gui/$(id -u)/com.searxng.mcp   # 중지
+    launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.searxng.mcp.plist  # 시작
+    tail -f ~/Library/Logs/searxng-search-mcp.err.log       # 로그
+-->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.searxng.mcp</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>__INSTALL_DIR__/SearXngSearch.Mcp</string>
+    </array>
+
+    <key>WorkingDirectory</key>
+    <string>__INSTALL_DIR__</string>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>ASPNETCORE_URLS</key>
+        <string>__ASPNETCORE_URLS__</string>
+        <key>SEARXNG__BASEURL</key>
+        <string>__SEARXNG_BASEURL__</string>
+    </dict>
+
+    <!-- 로그인 시 자동 시작 -->
+    <key>RunAtLoad</key>
+    <true/>
+
+    <!-- 실패 시 자동 재시작 (정상 종료 시에는 재시작 안 함) -->
+    <key>KeepAlive</key>
+    <dict>
+        <key>SuccessfulExit</key>
+        <false/>
+    </dict>
+
+    <!-- 로그 (stdout은 프로토콜 채널이 아니므로 파일로 리다이렉트) -->
+    <key>StandardOutPath</key>
+    <string>__LOG_DIR__/searxng-search-mcp.out.log</string>
+    <key>StandardErrorPath</key>
+    <string>__LOG_DIR__/searxng-search-mcp.err.log</string>
+</dict>
+</plist>

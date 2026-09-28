@@ -1,0 +1,40 @@
+# SearXngSearchMcpServer systemd 유닛 파일
+# 설치 위치: /etc/systemd/system/searxng-search-mcp.service
+#
+# 설치 후:
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now searxng-search-mcp
+#
+# 상태 확인:
+#   systemctl status searxng-search-mcp
+#   journalctl -u searxng-search-mcp -f
+
+[Unit]
+Description=SearXNG MCP Server (Streamable HTTP)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+# publish된 실행 파일 경로 (dotnet publish -c Release -r linux-x64 결과물)
+ExecStart=/opt/searxng-search-mcp/SearXngSearch.Mcp
+WorkingDirectory=/opt/searxng-search-mcp
+# 실행 계정 (전용 계정을 만들면 권장)
+User=searxng-search-mcp
+Group=searxng-search-mcp
+# 재시작 정책: 실패 시 5초 후 재시도
+Restart=on-failure
+RestartSec=5
+# 환경 변수 (appsettings.json 대신/추가로 사용 가능)
+# Environment=SEARXNG__BASEURL=http://your-searxng:8080
+# Environment=ASPNETCORE_URLS=http://localhost:5000
+# 리소스 제한 (선택)
+LimitNOFILE=65536
+# 보안 강화 (선택, 필요 시 주석 해제)
+# NoNewPrivileges=true
+# PrivateTmp=true
+# ProtectSystem=full
+# ProtectHome=true
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>SearXngSearch.Ai</RootNamespace>
+    <AssemblyName>SearXngSearch.Ai</AssemblyName>
+    <Description>SearXNG 검색 도구를 Microsoft.Extensions.AI(AITool)로 노출 — Microsoft Agent Framework 등 AI 프레임워크에서 바로 사용</Description>
+    <Version>1.0.0</Version>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.AI" Version="10.10.0" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.12" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\SearXngSearch\SearXngSearch.csproj" />
+  </ItemGroup>
+
+</Project>

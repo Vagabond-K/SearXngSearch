@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>SimpleSearchSample</RootNamespace>
+    <AssemblyName>SimpleSearchSample</AssemblyName>
+    <Description>SearXngSearch 라이브러리를 일반 .NET 콘솔 앱에서 사용하는 샘플 — 텍스트 입력 → 검색 결과 출력</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="10.0.0" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Console" Version="10.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\SearXngSearch\SearXngSearch.csproj" />
+  </ItemGroup>
+
+</Project>

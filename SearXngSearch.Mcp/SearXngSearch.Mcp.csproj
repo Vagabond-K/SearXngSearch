@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>SearXngSearch.Mcp</RootNamespace>
+    <AssemblyName>SearXngSearch.Mcp</AssemblyName>
+    <Description>SearXNG 웹 검색 MCP 서버 (Streamable HTTP + stdio)</Description>
+    <Version>1.0.0</Version>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="ModelContextProtocol.AspNetCore" Version="2.2.0" />
+    <PackageReference Include="Microsoft.Extensions.Hosting.WindowsServices" Version="10.0.12" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\SearXngSearch\SearXngSearch.csproj" />
+  </ItemGroup>
+
+  <!-- 서비스 설치 스크립트를 publish 출력물에 포함 (소스 없는 대상 머신에서 설치 가능) -->
+  <ItemGroup>
+    <None Include="Scripts\install-service.ps1" CopyToPublishDirectory="PreserveNewest" />
+    <None Include="Scripts\install-service.sh" CopyToPublishDirectory="PreserveNewest" />
+    <None Include="Scripts\install-service-macos.sh" CopyToPublishDirectory="PreserveNewest" />
+    <None Include="Scripts\searxng-search-mcp.plist" CopyToPublishDirectory="PreserveNewest" />
+    <None Include="Scripts\searxng-search-mcp.service" CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
+
+</Project>

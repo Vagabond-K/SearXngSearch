@@ -1,0 +1,14 @@
+# SearXNG 설정 — JSON API 활성화
+# use_default_settings: true 가 없으면 이 파일이 기본 설정을 "전체 대체"하므로 필수
+use_default_settings: true
+
+server:
+  # 프로덕션에서는 무작자 문자열로 변경하세요
+  secret_key: "searxng-search-mcp-dev-secret"
+  # 로컬 개발용: 레이트 리미트 비활성화
+  limiter: false
+
+search:
+  formats:
+    - html
+    - json

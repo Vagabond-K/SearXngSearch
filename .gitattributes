@@ -1,0 +1,19 @@
+# 줄 끝 문자(LF/CRLF) 정규화 — 크로스 플랫폼(Linux/macOS/Windows) 일관성을 위해
+# 모든 텍스트 파일은 저장소 내에서는 LF로 저장하고, 체크아웃 시 플랫폼 기본값을 사용한다.
+* text=auto
+
+# 아래 파일은 반드시 LF여야 한다 (CRLF면 실행/파싱이 깨진다).
+# - 셸 스크립트: CRLF면 bash가 `bad interpreter`/명령 오류
+# - systemd 유닛(.service): CRLF면 유닛 파싱 실패
+# - launchd plist: CRLF면 치환/파싱 문제
+# - Dockerfile / docker-compose / .dockerignore: CRLF면 지시어/패턴 매칭 깨짐
+# - SearXNG settings.yml: CRLF면 YAML 파싱 문제 가능
+*.sh text eol=lf
+*.service text eol=lf
+*.plist text eol=lf
+Dockerfile text eol=lf
+docker-compose.yml text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+.gitignore text eol=lf
+.dockerignore text eol=lf

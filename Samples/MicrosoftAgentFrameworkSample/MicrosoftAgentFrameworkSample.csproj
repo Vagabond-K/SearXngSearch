@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>MicrosoftAgentFrameworkSample</RootNamespace>
+    <AssemblyName>MicrosoftAgentFrameworkSample</AssemblyName>
+    <Description>Microsoft Agent Framework 에이전트에 SearXNG 검색 도구를 인 프로세스(AITool)로 연결하는 샘플</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Agents.AI.OpenAI" Version="1.22.0" />
+    <PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="10.0.0" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Console" Version="10.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\SearXngSearch\SearXngSearch.csproj" />
+    <ProjectReference Include="..\..\SearXngSearch.Ai\SearXngSearch.Ai.csproj" />
+  </ItemGroup>
+
+</Project>

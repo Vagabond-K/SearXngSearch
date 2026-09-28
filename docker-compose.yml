@@ -1,0 +1,38 @@
+# SearXNG + SearXNG MCP 서버 원클릭 실행
+#
+# 사용법:
+#   docker compose up -d --build
+#
+# 실행 후:
+#   - MCP 엔드포인트: http://localhost:5000/mcp
+#   - 헬스 체크:      http://localhost:5000/health
+#   - SearXNG 웹 UI:  http://localhost:8080
+services:
+  searxng:
+    image: searxng/searxng:latest
+    container_name: searxng
+    restart: unless-stopped
+    volumes:
+      # JSON API가 활성화된 설정
+      - ./docker/searxng-settings.yml:/etc/searxng/settings.yml:ro
+    environment:
+      - SEARXNG_BASE_URL=http://localhost:8080
+    ports:
+      # SearXNG 웹 UI를 호스트에 노출 (선택)
+      - "8080:8080"
+
+  searxng-search-mcp:
+    build: .
+    container_name: searxng-search-mcp
+    restart: unless-stopped
+    depends_on:
+      - searxng
+    environment:
+      # SearXNG 인스턴스 주소 (Docker 내부 네트워크 서비스명)
+      - SEARXNG__BASEURL=http://searxng:8080
+      # 컨테이너 내부에서 모든 인터페이스에 바인딩
+      - ASPNETCORE_URLS=http://0.0.0.0:5000
+      # Bearer 토큰 인증 (선택, 주석 해제 시 활성화)
+      # - SEARXNG__AUTHTOKEN=my-secret-token
+    ports:
+      - "5000:5000"
