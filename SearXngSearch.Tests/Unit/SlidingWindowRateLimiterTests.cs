@@ -59,4 +59,40 @@ public class SlidingWindowRateLimiterTests
 
         Assert.Equal(10, successes);
     }
+
+    [Fact]
+    public async Task WaitAsync_한도_이내_즉시_획득()
+    {
+        var limiter = new SlidingWindowRateLimiter();
+
+        Assert.True(await limiter.WaitAsync(1, TimeSpan.FromSeconds(1)));
+    }
+
+    [Fact]
+    public async Task WaitAsync_윈도우_만료_대기_후_획득()
+    {
+        var limiter = new SlidingWindowRateLimiter(windowDuration: TimeSpan.FromMilliseconds(150));
+
+        Assert.True(await limiter.WaitAsync(1, TimeSpan.FromSeconds(2)));
+
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+        Assert.True(await limiter.WaitAsync(1, TimeSpan.FromSeconds(2)));
+        sw.Stop();
+
+        Assert.True(sw.ElapsedMilliseconds >= 100, $"대기 시간 부족: {sw.ElapsedMilliseconds}ms");
+    }
+
+    [Fact]
+    public async Task WaitAsync_대기_시간_초과_시_false()
+    {
+        var limiter = new SlidingWindowRateLimiter(windowDuration: TimeSpan.FromMinutes(1));
+
+        Assert.True(await limiter.WaitAsync(1, TimeSpan.FromSeconds(1)));
+
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+        Assert.False(await limiter.WaitAsync(1, TimeSpan.FromMilliseconds(100)));
+        sw.Stop();
+
+        Assert.True(sw.ElapsedMilliseconds < 5000, $"대기 초과: {sw.ElapsedMilliseconds}ms");
+    }
 }

@@ -461,6 +461,14 @@ docker run -d --name searxng-search-mcp -p 5000:5000 \
 | `CacheEnabled` | `true` | 검색 결과 캐싱 활성화 여부 |
 | `CacheTtlSeconds` | `300` | 캐시 유지 시간(초) |
 | `RateLimitPerMinute` | `30` | 인스턴스당 분당 최대 요청 수 (슬라이딩 윈도우) |
+| `RateLimitWindowSeconds` | `60` | 레이트 리미트 슬라이딩 윈도우 기간(초) |
+| `RateLimitWaitEnabled` | `true` | 한도 초과 시 슬롯 대기(큐잉) 여부. false면 즉시 오류 |
+| `RateLimitWaitMaxSeconds` | `30` | 레이트 리미트 슬롯 대기 최대 시간(초) |
+| `MaxRetries` | `2` | 429/503/연결 실패 시 같은 리플리카 재시도 횟수 (failover 전) |
+| `RetryBaseDelaySeconds` | `1.0` | 재시도 기본 백오프 지연(초). 지수 배율(2^n) + ±25% jitter |
+| `RetryMaxDelaySeconds` | `10.0` | 재시도 대기 최대 시간(초) |
+| `MaxSnippetLength` | `null` | LLM 출력용 결과 요약 최대 길이(자). null이면 텍스트 300/JSON 500 |
+| `MaxOutputChars` | `0` | LLM 출력용 전체 포맷 결과 최대 크기(자). 초과 시 하위 결과 생략. 0 = 제한 없음 |
 | `HtmlFallbackEnabled` | `false` | JSON API 비활성화(403/404) 시 HTML 응답 파싱 (best-effort) |
 
 환경 변수로 오버라이드할 수도 있습니다:
@@ -652,9 +660,34 @@ curl -X POST http://localhost:5000/mcp \
 
 ### 레이트 리미트
 
-SearXNG 인스턴스별로 **슬라이딩 윈도우(1분)** 레이트 리미트가 적용됩니다. 한도 초과 시 다음 요청은 즉시 오류를 반환합니다 (SearXNG에 도달하지 않음).
+SearXNG 인스턴스별로 **슬라이딩 윈도우** 레이트 리미트가 적용되어, 몰아서 검색해도 업스트림에 도달하는 요청이 한도를 넘지 않습니다.
 
 - `RateLimitPerMinute`: 분당 허용 요청 수 (기본 30)
+- `RateLimitWindowSeconds`: 윈도우 기간(초, 기본 60)
+- `RateLimitWaitEnabled`: 한도 초과 시 다음 요청이 **슬롯이 비어질 때까지 대기**하는지 여부 (기본 `true`). `false`면 즉시 오류 반환
+- `RateLimitWaitMaxSeconds`: 슬롯 대기 최대 시간(초, 기본 30). 초과 시 오류
+
+### 재시도 (백오프)
+
+429/503 또는 연결 실패 시 같은 리플리카에서 **지수 백오프(±25% jitter)** 로 재시도한 뒤, 여전히 실패하면 다음 리플리카로 failover합니다. 429 응답의 `Retry-After` 헤더가 있으면 그 값을 우선 반영합니다.
+
+- `MaxRetries`: 리플리카당 재시도 횟수 (기본 2, 0이면 재시도 없이 즉시 failover)
+- `RetryBaseDelaySeconds`: 기본 백오프 지연(초, 기본 1.0) — n번째 재시도는 `base * 2^n`
+- `RetryMaxDelaySeconds`: 대기 최대 시간(초, 기본 10)
+
+### 출력 크기 제어 (LLM용)
+
+검색 결과는 LLM 컨텍스트에 그대로 투입되므로, 포맷 단계에서 크기를 제한할 수 있습니다.
+
+- `MaxSnippetLength`: 결과 요약(content) 최대 길이(자). 초과 시 `…`으로 잘립니다. null이면 형식별 기본값(텍스트 300자, JSON 500자)
+- `MaxOutputChars`: 전체 포맷 결과 최대 크기(자). 초과 시 하위 결과부터 생략하고 생략 개수를 표시합니다. 0 이하이면 제한 없음
+
+```json
+"SearXng": {
+  "MaxSnippetLength": 200,
+  "MaxOutputChars": 4000
+}
+```
 
 ### 리플리카 failover
 

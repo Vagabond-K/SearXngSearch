@@ -1,3 +1,5 @@
+using Microsoft.Extensions.Options;
+using SearXngSearch.Options;
 using SearXngSearch.Services;
 using System.ComponentModel;
 
@@ -12,10 +14,12 @@ namespace SearXngSearch.Ai;
 public sealed class SearXngAiTools
 {
     private readonly SearXngClient _searXng;
+    private readonly SearXngOptions _options;
 
-    public SearXngAiTools(SearXngClient searXng)
+    public SearXngAiTools(SearXngClient searXng, IOptions<SearXngOptions>? options = null)
     {
         _searXng = searXng;
+        _options = options?.Value ?? new SearXngOptions();
     }
 
     [Description(
@@ -48,8 +52,8 @@ public sealed class SearXngAiTools
             cancellationToken: cancellationToken);
 
         return outputFormat.Equals("json", StringComparison.OrdinalIgnoreCase)
-            ? SearchResultFormatter.ToJson(response, query, maxResults)
-            : SearchResultFormatter.ToText(response, query, maxResults);
+            ? SearchResultFormatter.ToJson(response, query, maxResults, _options.MaxSnippetLength, _options.MaxOutputChars)
+            : SearchResultFormatter.ToText(response, query, maxResults, _options.MaxSnippetLength, _options.MaxOutputChars);
     }
 
     [Description(
@@ -74,7 +78,7 @@ public sealed class SearXngAiTools
             maxResults: maxResults,
             cancellationToken: cancellationToken);
 
-        return SearchResultFormatter.ToText(response, query, maxResults);
+        return SearchResultFormatter.ToText(response, query, maxResults, _options.MaxSnippetLength, _options.MaxOutputChars);
     }
 
     [Description(

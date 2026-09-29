@@ -1,5 +1,7 @@
 using System.ComponentModel;
+using Microsoft.Extensions.Options;
 using ModelContextProtocol.Server;
+using SearXngSearch.Options;
 using SearXngSearch.Services;
 
 namespace SearXngSearch.Mcp.Tools;
@@ -11,10 +13,12 @@ namespace SearXngSearch.Mcp.Tools;
 public sealed class SearchTools
 {
     private readonly SearXngClient _searXng;
+    private readonly SearXngOptions _options;
 
-    public SearchTools(SearXngClient searXng)
+    public SearchTools(SearXngClient searXng, IOptions<SearXngOptions>? options = null)
     {
         _searXng = searXng;
+        _options = options?.Value ?? new SearXngOptions();
     }
 
     [McpServerTool(Name = "web_search"), Description(
@@ -47,8 +51,8 @@ public sealed class SearchTools
             cancellationToken: cancellationToken);
 
         return outputFormat.Equals("json", StringComparison.OrdinalIgnoreCase)
-            ? SearchResultFormatter.ToJson(response, query, maxResults)
-            : SearchResultFormatter.ToText(response, query, maxResults);
+            ? SearchResultFormatter.ToJson(response, query, maxResults, _options.MaxSnippetLength, _options.MaxOutputChars)
+            : SearchResultFormatter.ToText(response, query, maxResults, _options.MaxSnippetLength, _options.MaxOutputChars);
     }
 
     [McpServerTool(Name = "news_search"), Description(
@@ -73,7 +77,7 @@ public sealed class SearchTools
             maxResults: maxResults,
             cancellationToken: cancellationToken);
 
-        return SearchResultFormatter.ToText(response, query, maxResults);
+        return SearchResultFormatter.ToText(response, query, maxResults, _options.MaxSnippetLength, _options.MaxOutputChars);
     }
 
     [McpServerTool(Name = "check_searxng_status"), Description(

@@ -123,7 +123,9 @@ public sealed class SearXngClient
     }
 
     /// <summary>
-    /// 리플리카 목록을 순서대로 시도하며, 429/503 또는 연결 실패 시 다음 리플리카로 failover합니다.
+    /// 리플리카 목록을 순서대로 시도합니다. 각 리플리카에서 429/503 또는 연결 실패 시
+    /// 지수 백오프로 재시도(<see cref="SearXngOptions.MaxRetries"/>)한 뒤,
+    /// 여전히 실패하면 다음 리플리카로 failover합니다.
     /// </summary>
     private async Task<T> ExecuteWithFailoverAsync<T>(
         Func<string, Task<T>> action,
@@ -137,13 +139,16 @@ public sealed class SearXngClient
             var baseUrl = baseUrls[i];
             try
             {
-                if (!TryAcquireRateLimit(baseUrl))
+                if (!await AcquireRateLimitSlotAsync(baseUrl, cancellationToken))
                 {
                     throw new SearXngApiException(
-                        $"레이트 리미트 초과: {baseUrl} (분당 {_options.RateLimitPerMinute}회 제한). 잠시 후 다시 시도하세요.");
+                        _options.RateLimitWaitEnabled
+                            ? $"레이트 리미트 초과: {baseUrl} (분당 {_options.RateLimitPerMinute}회 제한, " +
+                              $"{_options.RateLimitWaitMaxSeconds:0.#}초 대기에도 슬롯을 확보하지 못했습니다). 잠시 후 다시 시도하세요."
+                            : $"레이트 리미트 초과: {baseUrl} (분당 {_options.RateLimitPerMinute}회 제한). 잠시 후 다시 시도하세요.");
                 }
 
-                return await action(baseUrl);
+                return await ExecuteWithRetryAsync(baseUrl, action, cancellationToken);
             }
             catch (SearXngApiException ex) when (ex.StatusCode is 429 or 503)
             {
@@ -162,6 +167,90 @@ public sealed class SearXngClient
         }
 
         throw lastException ?? new SearXngApiException("사용 가능한 SearXNG 리플리카가 없습니다.");
+    }
+
+    /// <summary>
+    /// 단일 리플리카에서 429/503 또는 연결 실패 시 지수 백오프(±25% jitter)로 재시도합니다.
+    /// 응답에 <c>Retry-After</c> 헤더가 있으면 그 값을 우선 사용합니다.
+    /// 재시도 횟수 소진 시 예외를 던져 상위 failover 루프로 전달합니다.
+    /// </summary>
+    private async Task<T> ExecuteWithRetryAsync<T>(
+        string baseUrl, Func<string, Task<T>> action, CancellationToken cancellationToken)
+    {
+        for (var attempt = 0; ; attempt++)
+        {
+            try
+            {
+                return await action(baseUrl);
+            }
+            catch (SearXngApiException ex) when (ex.StatusCode is 429 or 503)
+            {
+                if (attempt >= _options.MaxRetries)
+                {
+                    throw;
+                }
+
+                var delay = ComputeRetryDelay(attempt, ex.RetryAfterSeconds);
+                _logger.LogWarning(
+                    "리플리카 {Url}이 {Status}를 반환했습니다. {Delay}ms 후 재시도합니다 ({Attempt}/{Max}).",
+                    baseUrl, ex.StatusCode, (int)delay.TotalMilliseconds, attempt + 1, _options.MaxRetries);
+                await Task.Delay(delay, cancellationToken);
+            }
+            catch (HttpRequestException) when (attempt < _options.MaxRetries)
+            {
+                var delay = ComputeRetryDelay(attempt, null);
+                _logger.LogWarning(
+                    "리플리카 {Url}에 연결할 수 없습니다. {Delay}ms 후 재시도합니다 ({Attempt}/{Max}).",
+                    baseUrl, (int)delay.TotalMilliseconds, attempt + 1, _options.MaxRetries);
+                await Task.Delay(delay, cancellationToken);
+            }
+        }
+    }
+
+    /// <summary>
+    /// 재시도 지연을 계산합니다. <paramref name="retryAfterSeconds"/>(서버 지정)이 있으면
+    /// 그것을, 없으면 <c>RetryBaseDelaySeconds * 2^attempt</c>에 ±25% jitter를 적용합니다.
+    /// <see cref="SearXngOptions.RetryMaxDelaySeconds"/>(또는 Retry-After)를 초과하지 않습니다.
+    /// </summary>
+    private TimeSpan ComputeRetryDelay(int attempt, double? retryAfterSeconds)
+    {
+        var maxDelay = TimeSpan.FromSeconds(_options.RetryMaxDelaySeconds);
+
+        if (retryAfterSeconds is > 0)
+        {
+            return TimeSpan.FromSeconds(Math.Min(retryAfterSeconds.Value, _options.RetryMaxDelaySeconds));
+        }
+
+        var delay = TimeSpan.FromSeconds(_options.RetryBaseDelaySeconds * Math.Pow(2, attempt));
+        if (delay > maxDelay)
+        {
+            delay = maxDelay;
+        }
+
+        // ±25% jitter: 동시 재시도가 같은 시점에 몰리는 것을 분산
+        var jitter = 1.0 + (Random.Shared.NextDouble() * 0.5 - 0.25);
+        return TimeSpan.FromMilliseconds(delay.TotalMilliseconds * jitter);
+    }
+
+    /// <summary>
+    /// 인스턴스별 레이트 리미트 슬롯을 획득합니다. <see cref="SearXngOptions.RateLimitWaitEnabled"/>
+    /// 이 true면 한도 초과 시 슬롯이 비어질 때까지(최대 <see cref="SearXngOptions.RateLimitWaitMaxSeconds"/>)
+    /// 대기하고, false면 즉시 true/false를 반환합니다.
+    /// </summary>
+    private async Task<bool> AcquireRateLimitSlotAsync(string baseUrl, CancellationToken cancellationToken)
+    {
+        var limiter = _rateLimiters.GetOrAdd(
+            baseUrl, _ => new SlidingWindowRateLimiter(TimeSpan.FromSeconds(_options.RateLimitWindowSeconds)));
+
+        if (!_options.RateLimitWaitEnabled)
+        {
+            return limiter.TryAcquire(_options.RateLimitPerMinute);
+        }
+
+        return await limiter.WaitAsync(
+            _options.RateLimitPerMinute,
+            TimeSpan.FromSeconds(_options.RateLimitWaitMaxSeconds),
+            cancellationToken);
     }
 
     private async Task<SearXngSearchResponse> SendSearchRequestAsync(
@@ -224,7 +313,28 @@ public sealed class SearXngClient
             $"SearXNG API 요청 실패 (HTTP {(int)response.StatusCode} {response.StatusCode}). " +
             $"인스턴스가 실행 중인지, JSON API(format=json)가 활성화되어 있는지 확인하세요. " +
             $"(settings.yml: search.formats: [html, json] 또는 HtmlFallbackEnabled: true)",
-            (int)response.StatusCode);
+            (int)response.StatusCode,
+            ParseRetryAfterSeconds(response));
+    }
+
+    /// <summary>
+    /// 429/503 응답의 <c>Retry-After</c> 헤더(초 단위 delta 또는 날짜)를 파싱합니다.
+    /// </summary>
+    private static double? ParseRetryAfterSeconds(HttpResponseMessage response)
+    {
+        var retryAfter = response.Headers.RetryAfter;
+        if (retryAfter?.Delta is { } delta)
+        {
+            return delta.TotalSeconds;
+        }
+
+        if (retryAfter?.Date is { } date)
+        {
+            var seconds = (date - DateTimeOffset.UtcNow).TotalSeconds;
+            return seconds > 0 ? seconds : null;
+        }
+
+        return null;
     }
 
     private async Task<SearXngConfigResponse> SendConfigRequestAsync(
@@ -300,12 +410,6 @@ public sealed class SearXngClient
         }
 
         return names.Where(n => n.Length > 0).ToList();
-    }
-
-    private bool TryAcquireRateLimit(string baseUrl)
-    {
-        var limiter = _rateLimiters.GetOrAdd(baseUrl, _ => new SlidingWindowRateLimiter());
-        return limiter.TryAcquire(_options.RateLimitPerMinute);
     }
 
     private List<string> GetBaseUrls()

@@ -1,5 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using SearXngSearch.Options;
 using SearXngSearch.Services;
 
@@ -26,6 +27,7 @@ services.AddSingleton<SearXngClient>();
 
 using var provider = services.BuildServiceProvider();
 var searXng = provider.GetRequiredService<SearXngClient>();
+var searXngOptions = provider.GetRequiredService<IOptions<SearXngOptions>>().Value;
 
 Console.WriteLine("=== SearXNG 검색 샘플 (SearXngSearch 라이브러리) ===");
 Console.WriteLine($"인스턴스: {baseUrl}");
@@ -50,7 +52,7 @@ while (true)
     {
         var response = await searXng.SearchAsync(input, maxResults: 5);
         Console.WriteLine();
-        Console.WriteLine(SearchResultFormatter.ToText(response, input, 5));
+        Console.WriteLine(SearchResultFormatter.ToText(response, input, 5, searXngOptions.MaxSnippetLength, searXngOptions.MaxOutputChars));
     }
     catch (SearXngApiException ex)
     {

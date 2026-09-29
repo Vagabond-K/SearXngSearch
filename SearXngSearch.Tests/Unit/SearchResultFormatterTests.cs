@@ -102,4 +102,46 @@ public class SearchResultFormatterTests
         Assert.Equal(0, root.GetProperty("resultCount").GetInt32());
         Assert.Equal(JsonValueKind.Null, root.GetProperty("topResult").ValueKind);
     }
+
+    [Fact]
+    public void ToText_요약_길이_커스텀_적용()
+    {
+        var longContent = new string('a', 400);
+        var text = SearchResultFormatter.ToText(MakeResponse(1, longContent), "쿼리", 10, maxSnippetLength: 50);
+
+        var line = text.Split('\n').First(l => l.Contains("요약:")).TrimEnd('\r');
+        Assert.Equal($"    요약: {new string('a', 50)}…", line);
+    }
+
+    [Fact]
+    public void ToText_출력_상한_초과_시_하위_결과_생략()
+    {
+        var response = MakeResponse(10, new string('x', 200));
+        var text = SearchResultFormatter.ToText(response, "쿼리", 10, maxOutputChars: 1500);
+
+        Assert.Contains("결과 생략", text);
+        Assert.Contains("[1] 결과 1", text);
+        Assert.DoesNotContain("[10] 결과 10", text);
+    }
+
+    [Fact]
+    public void ToText_상한_없으면_전체_결과_포함()
+    {
+        var text = SearchResultFormatter.ToText(MakeResponse(3), "쿼리", 10, maxOutputChars: 0);
+
+        Assert.Contains("[3] 결과 3", text);
+        Assert.DoesNotContain("결과 생략", text);
+    }
+
+    [Fact]
+    public void ToJson_출력_상한_초과_시_하위_결과_생략()
+    {
+        var response = MakeResponse(10, new string('x', 200));
+        var json = SearchResultFormatter.ToJson(response, "쿼리", 10, maxOutputChars: 1500);
+        using var doc = JsonDocument.Parse(json);
+        var root = doc.RootElement;
+
+        Assert.True(root.GetProperty("resultCount").GetInt32() < 10);
+        Assert.True(root.GetProperty("omittedCount").GetInt32() > 0);
+    }
 }
